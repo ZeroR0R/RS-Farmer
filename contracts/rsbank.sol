@@ -10,6 +10,7 @@ contract rsbank is ERC20 {
   mapping(address => uint) public getEthBalance;
   mapping(address => uint) public entryStart;
   mapping(address => bool) public isDeposited;
+  mapping(address => bool) public isBorrowing;
 
   event Deposit(address indexed user, uint ethAmount, uint timeStart);
   event Withdraw(address indexed user, uint userBalance, uint depositTime, uint interest);
@@ -21,12 +22,12 @@ contract rsbank is ERC20 {
     constructor(uint256 _totalSupply) ERC20("RS 20", "RS") {
         
         _mint(msg.sender, _totalSupply);
-        rstoken = IERC20(address.this);
+        rstoken = IERC20(address(this));
         
     }
 
  function deposit() payable public {
-    require(isDeposited[msg.sender] == false, "Error: Deposit already active!");
+    require(isDeposited[msg.sender] != true, "Error: Deposit already active!");
     require(msg.value >= 10**16, "Error: deposit value must be >= 0.01 ETH");
 
     getEthBalance[msg.sender] = getEthBalance[msg.sender] + msg.value;
@@ -36,7 +37,7 @@ contract rsbank is ERC20 {
     emit Deposit(msg.sender, msg.value, block.timestamp);
   }
 
-  function withdraw() public {
+  function withdraw() public payable{
     //check if msg.sender deposit status is true
     require(isDeposited[msg.sender] == true, 'Error: No previous deposit');
     uint _userBalance = getEthBalance[msg.sender];
@@ -46,24 +47,26 @@ contract rsbank is ERC20 {
     uint _interestPerSecond = 31668017 * (_userBalance / 1e16); // 10% APY per year for 0.01 ETH
     uint _interest = _interestPerSecond * _depositTime;
 
-    rstoken.mint(msg.sender, _interest);
+    _mint(msg.sender, _interest);
 
-    msg.sender.transfer(_userBalance);
+    payable(msg.sender).transfer(_userBalance);
     
     entryStart[msg.sender] = 0;
     getEthBalance[msg.sender] = 0;
     isDeposited[msg.sender] = false;
 
-    emit Withdraw(msg.sender, _userBalance, entryStart, _interest);
+    emit Withdraw(msg.sender, _userBalance, entryStart[msg.sender], _interest);
 
   }
 
-  function borrow(uint _amount, ) payable public {
-      pass;
+  function borrow(uint _amount ) payable public {
+    require(msg.value >= 10**16, "Error: deposit value must be >= 0.01 ETH");
+    require(isBorrowing[msg.sender] != true, "Error: Loan already active!");
   }
 
   function payOff() public {
-      pass;
+      require(isBorrowing[msg.sender] == true, "Error: Loan not active!");
+      
   }
 }
 
