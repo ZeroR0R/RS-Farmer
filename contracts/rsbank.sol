@@ -11,6 +11,7 @@ contract rsbank is ERC20 {
   mapping(address => uint) public entryStart;
   mapping(address => bool) public isDeposited;
   mapping(address => bool) public isBorrowing;
+  mapping(address => uint) public BorrowAmount;
 
   event Deposit(address indexed user, uint ethAmount, uint timeStart);
   event Withdraw(address indexed user, uint userBalance, uint depositTime, uint interest);
@@ -59,9 +60,22 @@ contract rsbank is ERC20 {
 
   }
 
-  function borrow(uint _amount ) payable public {
+  function borrow(uint _collateral) payable public {
+    require(isDeposited[msg.sender] == false, "Error: Already Deposited");
     require(msg.value >= 10**16, "Error: deposit value must be >= 0.01 ETH");
     require(isBorrowing[msg.sender] != true, "Error: Loan already active!");
+
+    entryStart[msg.sender] = entryStart[msg.sender] + block.timestamp;
+    uint _amount = msg.value * 100;
+
+    BorrowAmount[msg.sender] = _amount;
+    _mint(msg.sender, BorrowAmount[msg.sender]);
+    isBorrowing[msg.sender] = true;
+
+    uint _interest = _amount/1;
+
+    emit LoanTaken(msg.sender, _amount, entryStart[msg.sender], _interest);
+
   }
 
   function payOff() public {
